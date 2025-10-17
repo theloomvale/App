@@ -1,0 +1,1349 @@
+{
+  "name": "Final IG Carousel",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        48,
+        688
+      ],
+      "id": "62f4cc99-1092-4765-ac6b-e7d1d08b0bdb",
+      "name": "Loop Over Items- 1 post"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Tone: {{$json.Tone}}\nCaption prompt: {{$json.CaptionPrompt}}\nHashtag prompt: {{$json.HashtagPrompt}}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Instruction: Generate two paragraph, detailed social media caption.\n\nContent Requirements:\n\nLength & Detail: The caption must be long and detailed, providing substantial information about the specific topic.\n\nResearch: Search online for factual details about the topic to ensure accuracy and richness of information.\n\nInclude exactly two relevant emojis naturally within the caption.t.\n\nCall to Action (CTA): Include a relevant and engaging call to action within the text (e.g., \"Tell us what you think in the comments!\").\n\nHashtags: Include a maximum of seven (7) relevant hashtags. These hashtags must be naturally merged into the end of the paragraph, forming a smooth, single flow of text.\n\nFormatting:\n\nThe entire output must together.\nPut a phragraph gap between caption and hastag.\n\nEach hashtag must start with # and be separated by a space, not commas."
+            }
+          ]
+        },
+        "batching": {
+          "batchSize": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        272,
+        688
+      ],
+      "id": "9acafb42-9713-4ab2-afd3-87d81da31235",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        848
+      ],
+      "id": "0b94ffb6-60dc-455e-87c4-6389f58b2daf",
+      "name": "OpenAI CM",
+      "credentials": {
+        "openAiApi": {
+          "id": "LH911hA7NyLCPlXb",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# ✅ STEP 1 INPUTS & PREP: \n*Reads sheet data, fetches or generates images, and stores them in Supabase.*\n\n",
+        "height": 608,
+        "width": 4044,
+        "color": 4
+      },
+      "id": "2c2ebc3a-90cb-4f53-9b72-432204465c50",
+      "name": "📝 Step 3 (Note)1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        512,
+        32
+      ],
+      "id": "1146cde1-dce3-41fb-bfdb-6b0190fa787b",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst imageUrls = items.map((item) => item?.json?.image_url);\n\nreturn [\n  {\n    json: { image_url: imageUrls },\n    pairedItem: items.map((_, index) => index),\n  },\n];"
+      },
+      "id": "0a7eaa8a-b119-4f33-868c-9dc64056451f",
+      "name": "Final Image links",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Output: one item per URL with a .jpg filename (we convert downstream)\nconst out = [];\nfor (const it of $input.all()) {\n  const arr = Array.isArray(it.json?.image_url) ? it.json.image_url : [];\n  arr.forEach((u, i) => {\n    out.push({ json: { src: u, index: i + 1, fileName: `image_${String(i+1).padStart(2,'0')}.jpg` } });\n  });\n}\nreturn out;"
+      },
+      "id": "82414f88-8598-4f05-b519-e1c4371a6a37",
+      "name": "Normalize image urls",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.src }} ",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3008,
+        48
+      ],
+      "id": "ce97d81d-8d66-4f2d-9223-f8db79cd3146",
+      "name": "Download for Supabase",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "919KKLVmWyJPscv8",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// forward only the fileName so we can merge it back after S3\nreturn $input.all().map(i => ({ json: { fileName: i.json.fileName } }));"
+      },
+      "id": "483179b0-6bfe-4ccd-bc8e-61185f48c6de",
+      "name": "Carry fileName",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3408,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base   = ($vars.SB_URL_BASE || '').replace(/\\/$/, '');\nconst bucket = $vars.SB_BUCKET || 'images';\nconst prefix = ($vars.SB_PREFIX || 'ig/uploads').replace(/^\\/+|\\/+$/g, '');\nconst items  = $input.all();\n\nconst urls = items.map((it, i) => {\n  const fileName = it.json?.fileName || it.json?.filename || it.json?.name;\n  if (!fileName) throw new Error(`Missing fileName for item ${i+1}`);\n  return `${base}/storage/v1/object/public/${bucket}/${prefix}/${fileName}`;\n});\n\nreturn [{ json: { image_url: urls } }];"
+      },
+      "id": "37c840d7-1816-413f-b1ba-b86d22bfb2fb",
+      "name": "Build Final SB URL (Public)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3824,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.image_url ?? [];\nlet urls = Array.isArray(raw) ? raw : [raw];\nurls = urls.filter(u => typeof u === \"string\" && /^https?:\\/\\//.test(u));\n// remove duplicates\nurls = [...new Set(urls)];\nif (urls.length > 5) urls = urls.slice(0, 5);\nreturn urls.map((u, i) => ({ json: { index: i+1, image_url: u, post_type: urls.length>=2?'carousel':'single' } }));"
+      },
+      "id": "93a3d714-479a-44ff-a3f6-53fe3126f582",
+      "name": "IG: Filter URLs (2–5)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4032,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v24.0/{{$vars.IG_USER_ID}}/media_publish",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{$json.id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5e8e54c2-7727-4942-af07-6e3297646e48",
+      "name": "IG: Publish Carousel1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2496,
+        720
+      ],
+      "retryOnFail": false,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "Jmzht7IGDG0gv7kq",
+          "name": "Facebook Graph account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "=images",
+        "fileName": "=ig/uploads/{{ $json.fileName }}",
+        "additionalFields": {
+          "acl": "publicRead"
+        }
+      },
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        3424,
+        96
+      ],
+      "id": "1ede606e-b911-4b30-b776-cc2457f527ac",
+      "name": "Upload a file",
+      "alwaysOutputData": false,
+      "credentials": {
+        "s3": {
+          "id": "Z5WMxrTwXSTJ0YeD",
+          "name": "\"REPLACE_S3_CREDENTIAL_ID\""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Make timestamped names like image_2025-10-14-17-32-05_1.jpg\nconst items = $input.all();\nconst folder = ($vars.SB_PREFIX || 'ig/upload').replace(/^\\/+|\\/+$/g, ''); // path inside bucket\nconst extDefault = 'jpg';\n\n// timestamp in LOCAL server time; set SB_TZ if you want a specific time zone\nconst tz = $vars.SB_TZ; // e.g. 'Europe/Istanbul'\nfunction nowParts() {\n  const d = tz ? new Date(new Date().toLocaleString('en-US', { timeZone: tz })) : new Date();\n  const p = (n)=>String(n).padStart(2,'0');\n  return {\n    y: d.getFullYear(),\n    M: p(d.getMonth()+1),\n    d: p(d.getDate()),\n    h: p(d.getHours()),\n    m: p(d.getMinutes()),\n    s: p(d.getSeconds()),\n  };\n}\n\nconst { y,M,d,h,m,s } = nowParts();\nconst ts = `${y}-${M}-${d}-${h}-${m}-${s}`;\n\nreturn items.map((it, i) => {\n  const ext =\n    it.json.fileExtension ||\n    it.binary?.data?.fileExtension ||\n    it.binary?.data?.fileext ||\n    extDefault;\n\n  const cleanExt = String(ext).replace(/^\\./,'').toLowerCase();\n  const fileName = `image_${ts}_${i+1}.${cleanExt}`;\n  const key = `${folder}/${fileName}`;\n\n  return { json: { fileName, key }, binary: it.binary };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        32
+      ],
+      "id": "52409b82-f8ee-4a75-b8ef-0174ee808a35",
+      "name": "Build SB Key"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3648,
+        32
+      ],
+      "id": "70c323b6-e7fe-4c86-9df2-59218df714cb",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        704,
+        704
+      ],
+      "id": "b20908c3-b908-415d-a7e8-a1e70be3d40c",
+      "name": "Merge2",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v24.0/{{$vars.IG_USER_ID}}/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{$vars.IG_ACCESS_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "CAROUSEL"
+            },
+            {
+              "name": "children",
+              "value": "={{$json.child_ids_csv}}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d905bd5d-2279-45e6-b6cd-8fb964e42944",
+      "name": "IG: Create Carousel Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1168,
+        704
+      ],
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "Jmzht7IGDG0gv7kq",
+          "name": "Facebook Graph account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all input items from Merge2 (should contain text + id)\nconst items = $input.all();\n\n// Gather and deduplicate child media IDs\nlet ids = items.map(i => i.json.id).filter(Boolean);\nids = [...new Set(ids)]; // remove duplicates\n\n// Validate: require at least 2 child items for a carousel\nif (ids.length < 2) {\n  throw new Error(`Expected at least 2 child IDs, found ${ids.length}`);\n}\n\n// Get caption from the first merged item or fallback variable\nconst caption =\n  (items[0]?.json?.text ?? $vars.IG_DEFAULT_CAPTION ?? '').toString().trim();\n\n// Return formatted output for Create Carousel Container\nreturn [\n  {\n    json: {\n      child_ids: ids,                     // array form\n      child_ids_csv: ids.join(','),       // string form for API call\n      caption                             // caption text\n    }\n  }\n];"
+      },
+      "id": "bcb288ba-a889-4743-b902-785faffb0e65",
+      "name": "IG: Collect Children",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v24.0/{{$vars.IG_USER_ID}}/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{$json.image_url}}"
+            },
+            {
+              "name": "is_carousel_item",
+              "value": "true"
+            },
+            {
+              "name": "access_token",
+              "value": "={{$vars.IG_ACCESS_TOKEN}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "dda8aac2-e4aa-4a0d-85cf-caeb9e11c456",
+      "name": "IG: Create Children (Image)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        3584,
+        736
+      ],
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "Jmzht7IGDG0gv7kq",
+          "name": "Facebook Graph account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        3184,
+        720
+      ],
+      "id": "6f2e7014-1306-4a81-995d-160f44f4423e",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.index === 1 ? 0 : 10 }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3408,
+        736
+      ],
+      "id": "03f8f390-39cd-405c-8669-8646f05ae4d9",
+      "name": "Wait",
+      "webhookId": "07f8fb2b-b14e-46ee-b708-8ac69be072c4"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2256,
+        720
+      ],
+      "id": "a7938a5c-d422-4d33-8618-af4180a293b2",
+      "name": "Wait1",
+      "webhookId": "3019e776-4de1-42cb-9e51-022b1851c601"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst resizeBase = \"https://wsrv.nl/?url=\";\nconst endCardUrl = $vars.ENDCARD_URL;\n\n// Collect URLs from either AI (already resized via Weserv) or Link scraping\nconst allUrls = items.flatMap(item => {\n  // From AI generation (already formatted)\n  if (item.json.image_url && Array.isArray(item.json.image_url)) {\n    return item.json.image_url;\n  }\n  // From link scraping (needs formatting)\n  if (item.json.link) {\n    return [item.json.link];\n  }\n  return [];\n}).filter(url => url && /^https?:\\/\\//i.test(url));\n\n// Map to output format\nconst resizedImages = allUrls.map(url => {\n  // Skip resizing if already processed by Weserv\n  if (url.includes('weserv.nl') || url.includes('wsrv.nl')) {\n    return { json: { image_url: url } };\n  }\n  // Apply resizing for raw URLs\n  const resizedUrl = `${resizeBase}${encodeURIComponent(url)}&w=1080&h=1350&fit=cover&output=jpg&q=90`;\n  return { json: { image_url: resizedUrl } };\n});\n\n// Add end card if fewer than 2 images\nif (resizedImages.length < 2 && endCardUrl) {\n  resizedImages.push({ json: { image_url: endCardUrl } });\n}\n\nreturn resizedImages;"
+      },
+      "id": "05cf3322-30aa-488e-963d-4bcf26265879",
+      "name": "Explode for Download",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst normalizeUrl = (url) => {\n  url = url.trim();\n  url = url.replace(/[^\\x20-\\x7E]/g, \"\"); // remove non-printable ascii characters\n  if (!/^https?:\\/\\//i.test(url)) {\n    if (/^\\/\\//.test(url)) {\n      url = \"https:\" + url;\n    } else if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) {\n      url = \"https://\" + url;\n    }\n  }\n  if (/^https?:\\/\\/[^/]/i.test(url)) {\n    url = encodeURI(decodeURI(url));\n  }\n  return url;\n};\n\nconst normalizedUrls = items.map((item) => {\n  const url = item?.json?.SourceLinks;\n  if (url) {\n    return { json: { url: normalizeUrl(url) } };\n  }\n});\n\nreturn normalizedUrls;\n"
+      },
+      "id": "2fbfc252-a6e4-4d58-9070-1bbf79ea09b3",
+      "name": "Link Image Scraping",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst updatedItems = items.map((item) => {\n  return {\n    json: {\n      ImageSource: item?.json?.ImageSource,\n      SourceLinks: item?.json?.SourceLinks,\n      ImagePrompt: item?.json?.ImagePrompt,\n    },\n  };\n});\nreturn updatedItems;\n"
+      },
+      "id": "52ed446a-f062-42c6-a1bb-31b2c311baa1",
+      "name": "Image Source Switch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.ImageSource }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "Link"
+            },
+            {
+              "value2": "AI",
+              "output": 1
+            }
+          ]
+        }
+      },
+      "id": "1f1ba162-578b-4841-98a6-1f6d2f794051",
+      "name": "Switch: Links vs Gen",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 16
+            },
+            {
+              "hour": 12
+            }
+          ]
+        }
+      },
+      "id": "4b342900-83ff-40ee-935c-972465426979",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        48,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "137GubL0pQqK4q9NHliQy1LTOjs45KNNQeFxexP6tqUQ",
+          "mode": "list",
+          "cachedResultName": "loomvale_pipeline_sample",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/137GubL0pQqK4q9NHliQy1LTOjs45KNNQeFxexP6tqUQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 782033773,
+          "mode": "list",
+          "cachedResultName": "Pipeline",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/137GubL0pQqK4q9NHliQy1LTOjs45KNNQeFxexP6tqUQ/edit#gid=782033773"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "Ready"
+            }
+          ]
+        },
+        "combineFilters": "AND",
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A:H"
+            }
+          }
+        }
+      },
+      "id": "56fb653f-e36a-4da2-baa1-e36996cf3b1c",
+      "name": "Google Sheets (Read Ready)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        256,
+        16
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "duTMqtzzoQjeQ8Fw",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# ✅ STEP 2 — CONTENT CREATION\n*Combines captions with prepared image URLs to form carousel containers..*\n\n",
+        "height": 608,
+        "width": 1900,
+        "color": 5
+      },
+      "id": "695d3a1c-8d6b-47bf-a262-a92ce192edcd",
+      "name": "📝 Step 3 (Note)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# ✅ STEP 1.1 SIDE CHAIN — IG Children Upload\n*Uploads each image as a child media object with delay to avoid duplicate IDs *\n\n",
+        "height": 608,
+        "width": 940,
+        "color": 3
+      },
+      "id": "52e503f1-21e5-42ad-a0ee-93f5c4425853",
+      "name": "📝 Step 3 (Note)3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3072,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# ✅ STEP 3 — PUBLISHING\n*Waits for container to be ready, publishes the post, and records results.*\n\n",
+        "height": 608,
+        "width": 1164,
+        "color": 6
+      },
+      "id": "a33b4650-e4da-4188-bf58-b28cab1396bc",
+      "name": "📝 Step 3 (Note)2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const creationId = $json.id;                 // must be the CONTAINER id from \"Create Carousel Container\"\nconst token = $vars.IG_ACCESS_TOKEN;\n\nfunction sleep(ms){ return new Promise(r => setTimeout(r, ms)); }\n\nasync function poll() {\n  const intervalMs = 3000;   // 3s\n  const maxTries   = 30;     // ~90s total\n\n  for (let i = 0; i < maxTries; i++) {\n    const res = await this.helpers.httpRequest({\n      method: 'GET',\n      url: `https://graph.facebook.com/v24.0/${creationId}`,\n      qs: { fields: 'status_code', access_token: token },\n      json: true\n    });\n\n    const sc = res?.status_code;\n    console.log('container poll:', { sc });\n\n    if (sc === 'FINISHED') return res;\n    if (sc === 'ERROR') throw new Error(`Container returned ERROR: ${JSON.stringify(res)}`);\n\n    await sleep(intervalMs);\n  }\n  throw new Error('Container not ready after polling window.');\n}\n\nconst result = await poll.call(this);\nreturn [{ json: { ...$json, ...result } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        704
+      ],
+      "id": "a4556ea8-f4d0-40e0-8837-c6dca7c2435e",
+      "name": "Poll the container until it’s ready"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "137GubL0pQqK4q9NHliQy1LTOjs45KNNQeFxexP6tqUQ",
+          "mode": "list",
+          "cachedResultName": "loomvale_pipeline_sample",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/137GubL0pQqK4q9NHliQy1LTOjs45KNNQeFxexP6tqUQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 782033773,
+          "mode": "list",
+          "cachedResultName": "Pipeline",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/137GubL0pQqK4q9NHliQy1LTOjs45KNNQeFxexP6tqUQ/edit#gid=782033773"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Completed",
+            "Topic": "={{ $('Google Sheets (Read Ready)').first().json.Topic }}"
+          },
+          "matchingColumns": [
+            "Topic"
+          ],
+          "schema": [
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ImageSource",
+              "displayName": "ImageSource",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ImagePrompt",
+              "displayName": "ImagePrompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "SourceLinks",
+              "displayName": "SourceLinks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Tone",
+              "displayName": "Tone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CaptionPrompt",
+              "displayName": "CaptionPrompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "HashtagPrompt",
+              "displayName": "HashtagPrompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "FinalImage",
+              "displayName": "FinalImage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2768,
+        720
+      ],
+      "id": "0d553713-18f3-4479-8b61-650083b76321",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "duTMqtzzoQjeQ8Fw",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "/**\n * Build AI Images (OpenAI) – v3\n * Generates up to 5 unique images from a single prompt.\n */\n\nconst CFG = {\n  model: \"dall-e-3\",\n  size: \"1024x1536\",\n  quality: \"high\",\n  format: \"png\",\n  background: \"transparent\",\n  variants: 5,\n  retries: 2\n};\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nasync function gen(prompt) {\n  let lastErr;\n  for (let i = 0; i <= CFG.retries; i++) {\n    try {\n      const r = await this.helpers.httpRequest({\n        method: \"POST\",\n        url: \"https://api.openai.com/v1/images/generations\",\n        headers: {\n          \"Authorization\": `Bearer ${$vars.OPENAI_API_KEY}`,\n          \"OpenAI-Project\": $vars.OPENAI_PROJECT,\n          \"Content-Type\": \"application/json\"\n        },\n        body: {\n          model: CFG.model,\n          prompt,\n          size: CFG.size,\n          quality: CFG.quality,\n          output_format: CFG.format,\n          background: CFG.background\n        },\n        json: true\n      });\n      const url = r?.data?.[0]?.url;\n      if (!url) throw new Error(\"No URL returned\");\n      return url;\n    } catch (e) {\n      lastErr = e;\n      if (i < CFG.retries) await sleep(800 * (i + 1));\n    }\n  }\n  const msg = lastErr?.response?.body?.error?.message || lastErr?.message || \"Unknown error\";\n  throw new Error(msg);\n}\n\ntry {\n  const base = String($json?.ImagePrompt || \"\").trim();\n  if (!base)\n    return { ...$json, status: \"error\", node: \"Build AI Images (OpenAI) – v3\", message: \"Missing ImagePrompt\" };\n\n  const n = Math.min(Math.max(Number($json?.Variants) || CFG.variants, 1), 5);\n  const urls = [];\n\n  // Make multiple calls for subtle variations\n  for (let i = 0; i < n; i++) {\n    const p = `${base} (different perspective ${i + 1})`;\n    urls.push(await gen.call(this, p));\n    await sleep(200);\n  }\n\n  return {\n    ...$json,\n    generator: \"openai\",\n    model: CFG.model,\n    size: CFG.size,\n    quality: CFG.quality,\n    format: CFG.format,\n    background: CFG.background,\n    variants: urls.length,\n    GeneratedImageURLs: urls,\n    GeneratedImageURL: urls[0] || null,\n    status: \"ok\"\n  };\n\n} catch (err) {\n  return { ...$json, status: \"error\", node: \"Build AI Images (OpenAI) – v3\", message: err.message };\n}"
+      },
+      "id": "fe087c35-8e65-4e38-bbc7-e3ed3271111a",
+      "name": "Build AI Images (OpenAI)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Convert OpenAI image URLs into 1080×1350 Weserv proxy links.\n */\n\nfunction toWeserv(u) {\n  if (!u) return null;\n  const noProto = u.replace(/^https?:\\/\\//, \"\");\n  const encoded = encodeURIComponent(noProto);\n  return `https://images.weserv.nl/?url=${encoded}&w=1080&h=1350&fit=cover&we&il&output=jpg`;\n}\n\ntry {\n  const urls = Array.isArray($json.GeneratedImageURLs)\n    ? $json.GeneratedImageURLs\n    : ($json.GeneratedImageURL ? [$json.GeneratedImageURL] : []);\n\n  const out = urls.map(toWeserv).filter(Boolean);\n\n  return {\n    ...$json,\n    image_url: out,  // ✅ ADDED - Standard format for downstream\n    WeservURLs: out,\n    WeservURLFirst: out[0] || null,\n    WeservInfo: \"1080×1350 cover-cropped via images.weserv.nl\"\n  };\n} catch (e) {\n  return { ...$json, status: \"error\", node: \"Make 1080x1350 Weserv URLs\", message: e.message };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        -144
+      ],
+      "id": "80ce39b0-f722-40cd-8d63-17c194669bf4",
+      "name": "Make 1080x1350 Weserv URLs"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 3
+            }
+          },
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "7db9f548-017d-4078-9133-4817f9d2cfe5",
+      "name": "HTTP Request (Free HTML fetch)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1584,
+        96
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 2,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract .jpg/.jpeg/.webp/.avif links from large HTML safely (chunked) and emit {json:{link}}.\n\nconst htmlRaw = String($json.body || $json.data || $json.html || '');\n\nconst MAX_CHARS = 1_500_000;\nconst CHUNK = 200_000;\nconst MAX_URLS_PER_PAGE = 1000;\n\nconst allow = /https?:\\/\\/[^\\s\"'()<>]+?\\.(?:jpe?g|webp|avif)(?:\\?[^\\s\"'<>]*)?/gi;\n\nconst html = htmlRaw.length > MAX_CHARS ? htmlRaw.slice(0, MAX_CHARS) : htmlRaw;\n\nconst set = new Set();\nfor (let i = 0; i < html.length && set.size < MAX_URLS_PER_PAGE; i += CHUNK) {\n  const slice = html.slice(i, i + CHUNK);\n  for (const m of slice.matchAll(allow)) {\n    if (m && m[0]) set.add(m[0]);\n    if (set.size >= MAX_URLS_PER_PAGE) break;\n  }\n}\n\nlet out = [...set].map(u => ({ json: { link: String(u) } }));\nreturn out.slice(0, 1000).map(it => (it && typeof it.json === 'object' ? it : { json: it }));\n"
+      },
+      "id": "dfce8aaa-9ed3-45b9-a56f-789db3e8cf6a",
+      "name": "Extract URLs (Chunked)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        96
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 3
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        96
+      ],
+      "id": "fbebd6f8-7d81-49a8-8032-5ac7a634d519",
+      "name": "Download for Visual Check",
+      "alwaysOutputData": true,
+      "retryOnFail": false,
+      "executeOnce": false,
+      "notesInFlow": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * VISUAL FILTER + DEDUP (Lenient + URL heuristics + fallback)\n * Use this in an n8n Code node after image download (with binary)\n */\n\nconst items = $input.all();\n\n// ---------- CONFIGURATION ----------\nconst MIN_W = 600;\nconst MIN_H = 800;\nconst MIN_RATIO = 1.05;\nconst FALLBACK_MIN_BYTES = 100 * 1024; // 100 KB\nconst ALLOWED_MIME = /^(image\\/jpeg|image\\/jpg|image\\/webp|image\\/avif)$/i;\nconst MAX_OUTPUT = 120;\nconst PASSTHRU_TOP_N = 30;\n//------------------------------------\n\nconst crypto = require('crypto');\n\nfunction getLink(it) {\n  return it?.json?.link || it?.json?.url || '';\n}\nfunction getMime(it) {\n  const m = it?.binary?.data?.mimeType || it?.json?.headers?.['content-type'] || '';\n  return String(m).toLowerCase();\n}\nfunction getSizeBytes(it) {\n  const binSz = Number(it?.binary?.data?.fileSize || 0);\n  if (binSz) return binSz;\n  const hLen = Number(it?.json?.headers?.['content-length'] || 0);\n  return hLen || 0;\n}\nfunction getBuf(it) {\n  const b64 = it?.binary?.data?.data;\n  if (!b64) return null;\n  try { return Buffer.from(b64, 'base64'); } catch { return null; }\n}\n\n// ---------- JPEG ----------\nfunction sizeJPEG(buf) {\n  if (!buf || buf.length < 4 || buf.readUInt16BE(0) !== 0xFFD8) return null;\n  let i = 2;\n  while (i + 1 < buf.length) {\n    while (i < buf.length && buf[i] !== 0xFF) i++;\n    while (i < buf.length && buf[i] === 0xFF) i++;\n    const marker = buf[i]; i++;\n    if ((marker >= 0xD0 && marker <= 0xD7) || marker === 0x01) continue;\n    if (i + 1 >= buf.length) break;\n    const segLen = buf.readUInt16BE(i);\n    const segStart = i + 2;\n    const segEnd = segStart + (segLen - 2);\n    if (segEnd > buf.length) break;\n    const isSOF = (marker >= 0xC0 && marker <= 0xC3);\n    if (isSOF) {\n      const h = buf.readUInt16BE(segStart + 1);\n      const w = buf.readUInt16BE(segStart + 3);\n      if (w > 0 && h > 0) return { w, h, type: 'jpeg' };\n    }\n    i = segEnd;\n  }\n  return null;\n}\n\n// ---------- WEBP ----------\nfunction sizeWEBP(buf) {\n  if (!buf || buf.length < 30) return null;\n  if (buf.toString('ascii',0,4) !== 'RIFF' || buf.toString('ascii',8,12) !== 'WEBP') return null;\n  const w = 1 + buf.readUIntLE(24, 3);\n  const h = 1 + buf.readUIntLE(27, 3);\n  return (w && h) ? { w, h, type: 'webp' } : null;\n}\n\n// ---------- AVIF ----------\nfunction sizeAVIF(buf) {\n  let off = 0;\n  while (off + 8 <= buf.length) {\n    const size = buf.readUInt32BE(off);\n    const type = buf.toString('ascii', off + 4, off + 8);\n    if (!size || size < 8) break;\n    if (type === 'ispe' && off + 20 <= buf.length) {\n      const w = buf.readUInt32BE(off + 12);\n      const h = buf.readUInt32BE(off + 16);\n      if (w && h) return { w, h, type: 'avif' };\n    }\n    off += size;\n  }\n  return null;\n}\n\nfunction getSizeFromBytes(link, buf) {\n  const l = link.toLowerCase();\n  if (l.includes('.jpg') || l.includes('.jpeg')) return sizeJPEG(buf);\n  if (l.includes('.webp')) return sizeWEBP(buf);\n  if (l.includes('.avif')) return sizeAVIF(buf);\n  if (buf.readUInt16BE(0) === 0xFFD8) return sizeJPEG(buf);\n  if (buf.toString('ascii',0,4) === 'RIFF') return sizeWEBP(buf);\n  return null;\n}\n\nfunction getSizeFromUrl(u) {\n  if (!u) return null;\n  let m = u.match(/_CR\\d+,\\d+,(\\d+),(\\d+)_/i);\n  if (m) return { w: +m[1], h: +m[2], type: 'url' };\n  m = u.match(/_UX(\\d+)_/i); if (m) return { w: +m[1], h: Math.round(+m[1]*1.5), type: 'url_guess' };\n  m = u.match(/_UY(\\d+)_/i); if (m) return { h: +m[1], w: Math.round(+m[1]/1.5), type: 'url_guess' };\n  m = u.match(/(\\d{3,5})x(\\d{3,5})/); if (m) return { w: +m[1], h: +m[2], type: 'url' };\n  m = u.match(/[?&](?:w|width)=(\\d{3,5})/i); const wq = m ? +m[1] : null;\n  m = u.match(/[?&](?:h|height)=(\\d{3,5})/i); const hq = m ? +m[1] : null;\n  if (wq && hq) return { w: wq, h: hq, type: 'url' };\n  return null;\n}\n\nfunction urlCore(u) {\n  return String(u || '').replace(/[?#].*$/, '').replace(/_[A-Z]{1,3}\\d{2,5}[^.]*\\./, '.');\n}\n\nconst seenHashes = new Set();\nconst seenUrlCore = new Set();\nconst passed = [];\nconst scoredForPassthru = [];\n\nfor (const it of items) {\n  const link = getLink(it);\n  if (!link) continue;\n  const mime = getMime(it);\n  if (mime && !ALLOWED_MIME.test(mime)) continue;\n\n  const buf = getBuf(it);\n  const sizeBytes = getSizeBytes(it);\n  scoredForPassthru.push({ it, link, sizeBytes });\n\n  if (buf?.length) {\n    const h = crypto.createHash('sha256').update(buf).digest('hex');\n    if (seenHashes.has(h)) continue;\n    seenHashes.add(h);\n  } else {\n    const k = urlCore(link);\n    if (seenUrlCore.has(k)) continue;\n    seenUrlCore.add(k);\n  }\n\n  let dims = buf ? getSizeFromBytes(link, buf) : null;\n  if (!dims) dims = getSizeFromUrl(link);\n\n  let keep = false;\n  if (dims) {\n    const { w, h } = dims;\n    const ratio = h / w;\n    keep = (w >= MIN_W && h >= MIN_H && ratio >= MIN_RATIO);\n  } else {\n    keep = (sizeBytes >= FALLBACK_MIN_BYTES);\n  }\n\n  if (keep) {\n    passed.push({\n      json: {\n        link,\n        width: dims?.w ?? null,\n        height: dims?.h ?? null,\n        ratio: dims ? (dims.h / dims.w) : null,\n        bytes: buf?.length || sizeBytes || null,\n        mimeType: mime || null,\n      },\n      binary: it.binary ?? undefined,\n    });\n    if (passed.length >= MAX_OUTPUT) break;\n  }\n}\n\nif (!passed.length) {\n  const sorted = scoredForPassthru.sort((a,b)=> (b.sizeBytes||0) - (a.sizeBytes||0)).slice(0, PASSTHRU_TOP_N);\n  const out = [];\n  const localSeen = new Set();\n  for (const s of sorted) {\n    const k = urlCore(s.link);\n    if (localSeen.has(k)) continue;\n    localSeen.add(k);\n    out.push({\n      json: { link: s.link, bytes: s.sizeBytes || null, reason: 'passthrough_largest' },\n      binary: s.it.binary ?? undefined,\n    });\n  }\n  return out.length ? out : [{ json: { error: 'No images passed and nothing to passthrough.' } }];\n}\n\nreturn passed;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2192,
+        96
+      ],
+      "id": "bea39dd2-00b9-4477-b961-dfdff939061c",
+      "name": "Visual Filter + Dedup"
+    }
+  ],
+  "pinData": {
+    "Trigger": [
+      {
+        "json": {}
+      }
+    ]
+  },
+  "connections": {
+    "Loop Over Items- 1 post": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items- 1 post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI CM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Image Source Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Image links": {
+      "main": [
+        [
+          {
+            "node": "Normalize image urls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize image urls": {
+      "main": [
+        [
+          {
+            "node": "Download for Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download for Supabase": {
+      "main": [
+        [
+          {
+            "node": "Build SB Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carry fileName": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Final SB URL (Public)": {
+      "main": [
+        [
+          {
+            "node": "IG: Filter URLs (2–5)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG: Filter URLs (2–5)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG: Publish Carousel1": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Upload a file": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Build SB Key": {
+      "main": [
+        [
+          {
+            "node": "Upload a file",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Carry fileName",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Build Final SB URL (Public)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "IG: Collect Children",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG: Create Carousel Container": {
+      "main": [
+        [
+          {
+            "node": "Poll the container until it’s ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG: Collect Children": {
+      "main": [
+        [
+          {
+            "node": "IG: Create Carousel Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG: Create Children (Image)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "IG: Create Children (Image)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "IG: Publish Carousel1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Explode for Download": {
+      "main": [
+        [
+          {
+            "node": "Final Image links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link Image Scraping": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (Free HTML fetch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Source Switch": {
+      "main": [
+        [
+          {
+            "node": "Switch: Links vs Gen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Links vs Gen": {
+      "main": [
+        [
+          {
+            "node": "Link Image Scraping",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build AI Images (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets (Read Ready)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets (Read Ready)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Over Items- 1 post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll the container until it’s ready": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        []
+      ]
+    },
+    "Build AI Images (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Make 1080x1350 Weserv URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make 1080x1350 Weserv URLs": {
+      "main": [
+        [
+          {
+            "node": "Download for Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (Free HTML fetch)": {
+      "main": [
+        [
+          {
+            "node": "Extract URLs (Chunked)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract URLs (Chunked)": {
+      "main": [
+        [
+          {
+            "node": "Download for Visual Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download for Visual Check": {
+      "main": [
+        [
+          {
+            "node": "Visual Filter + Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Visual Filter + Dedup": {
+      "main": [
+        [
+          {
+            "node": "Explode for Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "9feb1b4f-df8a-4b5e-9d42-8596065af145",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "528f14ba5ff281f0f40c8bb2d30cbe643545456413132a7b7429a9311fcfc9cd"
+  },
+  "id": "qSyxV2pJ7v2KP8Pv",
+  "tags": []
+}
